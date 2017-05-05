@@ -5,12 +5,14 @@
 
 import sys,getopt
 import re
+from test.test_tarfile import LimitsTest
 
 ver=0.2
 debug_falg=0
-softBinNum = 14;
-testnumber = 1000;
-increase = 1;
+softBinNum = 14
+testnumber = 1000
+increase = 1
+linux = False
 
 def init():
 	nameMap.clear
@@ -176,15 +178,24 @@ for op, value in opts:
         log_file = value
     elif op == "-h":
         usage()
-        sys.exit()
+        sys.exit()        
 #arg-end
 
 #main 	
 inFile = file(input_file)	
-BinsNumberSheet = file("/projects/OMAP5_RPC/VLCT_documents/Testprogram_VLCT_REV37/BINS/hardbinsDefinition.csv","r")
-BinsNameSheet = file("/projects/OMAP5_RPC/VLCT_documents/Testprogram_VLCT_REV37/BINS/binsAuditPOSTBI_OS.csv","r")
-DigitalTestPlanFile = file("/projects/OMAP5_RPC/VLCT_documents/Testprogram_VLCT_REV37/DIGITAL/digitalTestPlanData.csv","r")
-BinCodeFile =  file("/projects/OMAP5_RPC/VLCT_documents/Testprogram_VLCT_REV37/BINS/binsPOSTBI_OS.p","r")
+if(linux):
+	#linux
+	prgm_path = "/projects/OMAP5_RPC/VLCT_documents/Testprogram_VLCT_REV37/"	
+else:
+	#windows
+	prgm_path = "D:/TI/OMAP5/OMAP5_RPC_VLCT/VLCT_documents/Testprogram_VLCT_REV37/"
+		
+BinsNumberSheet = file(prgm_path+"BINS/hardbinsDefinition.csv","r")
+BinsNameSheet = file(prgm_path+"BINS/binsAuditPOSTBI_OS.csv","r")
+DigitalTestPlanFile = file(prgm_path+"DIGITAL/digitalTestPlanData.csv","r")
+BinCodeFile =  file(prgm_path+"BINS/binsPOSTBI_OS.p","r")
+
+
 nameList=[]
 nameMap={}
 softBinMap={}
