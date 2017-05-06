@@ -153,6 +153,7 @@ def read_limitcsv(x):
     	for line in islice(data_per_line,2,None): 
 #     		print line,
     		Key = line.replace("\"","").replace("\n","").split(',');
+    		
   	x.close()
 	print "limit table ",x," has been read"
 
