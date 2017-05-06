@@ -196,6 +196,7 @@ DigitalTestPlanFile = file(prgm_path+"DIGITAL/digitalTestPlanData.csv","r")
 BinCodeFile =  file(prgm_path+"BINS/binsPOSTBI_OS.p","r")
 
 
+
 nameList=[]
 nameMap={}
 softBinMap={}

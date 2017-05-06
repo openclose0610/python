@@ -5,7 +5,9 @@
 
 import sys,getopt
 import re
+from itertools import islice  
 from test.test_tarfile import LimitsTest
+from _elementtree import Comment
 
 ver=0.2
 debug_falg=0
@@ -13,6 +15,7 @@ softBinNum = 14
 testnumber = 1000
 increase = 1
 linux = False
+TITestType="POSTBI_OS"
 
 def init():
 	nameMap.clear
@@ -44,7 +47,7 @@ def read_SuiteName(x):
 
 def read_HardBinNumber(x):
     data_per_line = x.readlines()   
-    for line in data_per_line:   	
+    for line in islice(data_per_line,1,None):   	
     	Key = line.replace("\"","").replace("\n","").split(',');
 	if len(Key)>3:	
 		if(len(Key[0])>0):
@@ -57,7 +60,7 @@ def read_HardBinNumber(x):
 
 def read_BinInfo(x):
     data_per_line = x.readlines()   
-    for line in data_per_line:   	
+    for line in islice(data_per_line,1,None):   	
     	Key = line.replace("\"","").replace("\n","").split(',');
 	if len(Key)>6:	
 		if(len(Key[0])>0):
@@ -73,7 +76,7 @@ def read_BinInfo(x):
 
 def read_DigitalTestPlan(x):
 	data_per_line = x.readlines()   
-    	for line in data_per_line:   	
+    	for line in islice(data_per_line,1,None):   	
     		Key = line.replace("\"","").replace("\n","").split(',');
 		if len(Key)>10:	
 			if(len(Key[0])>0):
@@ -145,6 +148,14 @@ def read_BinCode(x):
     	x.close()
     	print('BinCode has been read')
 
+def read_limitcsv(x):
+	data_per_line = x.readlines()   
+    	for line in islice(data_per_line,2,None): 
+#     		print line,
+    		Key = line.replace("\"","").replace("\n","").split(',');
+  	x.close()
+	print "limit table ",x," has been read"
+
 def usage():
     print("")
     print("***Help Info***")
@@ -165,13 +176,16 @@ def usage():
     
 
 #arg-begin    
-opts, args = getopt.getopt(sys.argv[1:], "hi:o:l:")
+opts, args = getopt.getopt(sys.argv[1:], "hi:m:o:l:")
 input_file=""
 output_file=""
+running_mode="func" #func, para; default func
 log_file="./default_log"
 for op, value in opts:
     if op == "-i":    
         input_file = value
+    elif op == "-m":    
+	   running_mode = value
     elif op == "-o":
         output_file = value
     elif op == "-l":
@@ -195,18 +209,23 @@ BinsNameSheet = file(prgm_path+"BINS/binsAuditPOSTBI_OS.csv","r")
 DigitalTestPlanFile = file(prgm_path+"DIGITAL/digitalTestPlanData.csv","r")
 BinCodeFile =  file(prgm_path+"BINS/binsPOSTBI_OS.p","r")
 
-ANALOG/analogLimits.csv
-AVS/avsLimits.csv
-AVS/avsPatternLimits.csv
-CONTY/contyLimits.csv
-DCPARA/dcparaLimits.csv
-DCPARA/dcparaPerPinLimits.csv
-IDDQ/iddqLimits.csv
-DIGITAL/digitalLimits.csv
-ODP/odpLimits.csv
-UTILITIES/diagLimits.csv
+ANALOGLimitSheet = file(prgm_path+"ANALOG/analogLimits.csv","r")
+AVSLimitSheet = file(prgm_path+"AVS/avsLimits.csv","r")
+AVSLimitSheet = file(prgm_path+"AVS/avsPatternLimits.csv","r")
+CONTYLimitSheet = file(prgm_path+"CONTY/contyLimits.csv","r")
+DCPARALimitSheet = file(prgm_path+"DCPARA/dcparaLimits.csv","r")
+DCPARALimitSheet = file(prgm_path+"DCPARA/dcparaPerPinLimits.csv","r")
+IDDQLimitSheet = file(prgm_path+"IDDQ/iddqLimits.csv","r")
+DIGITALLimitSheet = file(prgm_path+"DIGITAL/digitalLimits.csv","r")
+ODPLimitSheet = file(prgm_path+"ODP/odpLimits.csv","r")
+UTILITIESLimitSheet = file(prgm_path+"UTILITIES/diagLimits.csv","r")
 
 
+lower = "-1"
+upper = "1"
+lower_compare_state = "NA"
+higher_compare_state = "NA"
+unit=""
 nameList=[]
 nameMap={}
 softBinMap={}
@@ -221,33 +240,38 @@ read_HardBinNumber(BinsNumberSheet)
 read_BinInfo(BinsNameSheet)
 read_DigitalTestPlan(DigitalTestPlanFile)
 read_BinCode(BinCodeFile)
-
+read_limitcsv(IDDQLimitSheet)
 
 results = []
 log =[]
-testtable_headline = "Suite name,Test name,Test number,Lsl,Usl,Lsl,Usl,Lsl,Usl,Lsl_typ,Usl_typ,Units,Bin_s_num,Bin_s_name,Bin_h_num,Bin_h_name,Bin_type,Bin_reprobe,Bin_overon,Test_remarks\n"
-testtable_secondline = "Test mode,,,TEMP_25_DEG,TEMP_25_DEG,TEMP_30_DEG,TEMP_30_DEG,TEMP_90_DEG,TEMP_90_DEG,,,,,,,,,,,\n"
+testtable_headline = "Suite name,Test name,Test number,Lsl,Usl,Lsl,Usl,Lsl,Usl,Lsl,Usl,Lsl,Usl,Lsl_typ,Usl_typ,Units,Bin_s_num,Bin_s_name,Bin_h_num,Bin_h_name,Bin_type,Bin_reprobe,Bin_overon,Test_remarks\n"
+testtable_secondline = "Test mode,,,TEMP_30_DEG,TEMP_30_DEG,TEMP_37_DEG,TEMP_37_DEG,TEMP_90_DEG,TEMP_90_DEG,TEMP_105_DEG,TEMP_105_DEG,TEMP_n45_DEG,TEMP_n45_DEG,,,,,,,,,,,\n"
 results.append(testtable_headline)
 results.append(testtable_secondline)
 log_headline = " These suites did not find softBin name from vlct program, self-defined by tool:"
 log.append(log_headline)
+
 for Key in nameList:	
+	name93k = "%s,%s,%s," %(Key,TestName93kMap[Key], testnumber)
+	if(running_mode == "func"):
+		limit = "1,1,1,1,1,1,1,1,1,1,GE,LE,Bool,"
+	elif(running_mode == "para"):
+		comment = "parametric test"
+		limit = "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s," %(lower, upper,lower, upper,lower,upper,lower, upper,lower, upper, lower_compare_state, higher_compare_state,unit)
+ 	else:
+		print "not support this running mode : ", running_mode
+		break
 	if(softBinMap.has_key(nameMap[Key])):
-		if(debug_falg==1):
-    			print Key,nameMap[Key], softBinMap[nameMap[Key]],softBinNum, hardBinMap[nameMap[Key]],hardBinNumberMap[hardBinMap[nameMap[Key]]]		
-		tmp = "%s,%s,%s,1,1,1,1,1,1,GE,LE,Bool,%s,%s,%s,%s,bad,,,\n" %(Key,TestName93kMap[Key], testnumber,softBinNum, softBinMap[nameMap[Key]],hardBinNumberMap[hardBinMap[nameMap[Key]]],hardBinMap[nameMap[Key]])
-		results.append(tmp)
+		bin_info = "%s,%s,%s,%s,bad,,,\n"  %(softBinNum, softBinMap[nameMap[Key]],hardBinNumberMap[hardBinMap[nameMap[Key]]],hardBinMap[nameMap[Key]])
 	elif(hardBinMap.has_key(nameMap[Key])):
 		self_defined_softbin= nameMap[Key].replace("_ST","_F")
 		log_tmp= "Suite:%s  SoftBin:%s\n" %(Key,self_defined_softbin)
 		log.append(log_tmp)
-		tmp = "%s,%s,%s,1,1,1,1,1,1,GE,LE,Bool,%s,%s,%s,%s,bad,,,\n" %(Key,TestName93kMap[Key], testnumber,softBinNum, self_defined_softbin,hardBinNumberMap[hardBinMap[nameMap[Key]]],hardBinMap[nameMap[Key]])
-		results.append(tmp)
-		
+		bin_info = "%s,%s,%s,%s,bad,,,\n" %(softBinNum, self_defined_softbin,hardBinNumberMap[hardBinMap[nameMap[Key]]],hardBinMap[nameMap[Key]])
 	else:
-		print "Warnings: %s did not find binning info in vlct program!" %nameMap[Key]
+		print "Warnings: %s did not find bin info in vlct program!" %nameMap[Key]
 		comment = "Warning here, no bin info "
-		
+	results.append(name93k+limit+bin_info)
 	softBinNum=softBinNum+1
 	testnumber=testnumber+1
 
