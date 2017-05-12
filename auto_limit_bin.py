@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 #author -Jacob Xia
-#ver 0.50-May.11.2017
+#ver 0.6-May.12.2017
 
 import sys,getopt
 import re
@@ -11,7 +11,7 @@ from _elementtree import Comment
 from operator import index
 
 
-ver=0.50
+ver=0.6
 debug_falg=0
 softBinNum = 14
 testnumber = 1000
@@ -44,6 +44,7 @@ unit = ""
 
 vlct_testname=[]
 vlct_limitinfo=[]
+existList_tmp=[]
 softBinMap={}
 hardBinMap={}
 hardBinNumberMap={}
@@ -56,7 +57,7 @@ def init():
 
 def read_SuiteName(x):
     data_per_line = x.readlines()   
-    for line in data_per_line:   	
+    for line in islice(data_per_line,1,None):  	
     	Key = line.replace("\"","").replace("\n","").split(',');
 	if len(Key)>1:	
 		if(len(Key[0])>0):
@@ -306,6 +307,23 @@ def specify_limit_by_temp(temp,lower,upper):
 	else:
 		print "The system doesn't support this temperature type: " , temp	
 		
+def get_Testware_Parm_Name(input_name):
+	existList_tmp=[]
+	result_tmp = "nonexist"
+	for index in range(len(vlct_testname)):		
+		if(vlct_testname[index] == input_name):
+			content = vlct_limitinfo[index].replace("\"","").replace("\n","").split(',')
+			for name in existList_tmp:
+				if(name == content[2]):
+					result_tmp="exist"
+					break
+				else:
+					result_tmp="nonexist"
+			if(result_tmp=="nonexist"):
+				existList_tmp.append(content[2])
+			
+	return existList_tmp	
+		
 def usage():
     print("")
     print("***Help Info***")
@@ -409,35 +427,57 @@ log_headline = " These suites did not find softBin name from vlct program, self-
 log.append(log_headline)
 
 for index in range(len(suite_namelist_93k)):
+	if(testname_93k[index]!=""):
+		name93k = "%s,%s,%s," %(suite_namelist_93k[index],testname_93k[index], testnumber)
+		if(running_mode == "func"):
+			limit = "1,1,1,1,1,1,1,1,1,1,GE,LE,Bool,"
+		elif(running_mode == "para"):
+			comment = "93K parametric test"
 	
-	name93k = "%s,%s,%s," %(suite_namelist_93k[index],testname_93k[index], testnumber)
-	if(running_mode == "func"):
-		limit = "1,1,1,1,1,1,1,1,1,1,GE,LE,Bool,"
-	elif(running_mode == "para"):
-		comment = "93K parametric test"
-
-		fill_in_limit(testname_93k[index],suite_namelist_vlct[index])
-		limit = "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s," %(temp30lower, temp30upper,temp37lower, temp37upper,temp90lower,temp90upper,temp105lower, temp105upper,tempN45lower, tempN45upper, lower_compare_state, higher_compare_state,unit)
- 	else:
-		print "not support this running mode : ", running_mode
-		break
-	
-	UpperCaseSuiteName = suite_namelist_vlct[index].upper()
-	if(softBinMap.has_key(UpperCaseSuiteName)):
-		bin_info = "%s,%s,%s,%s,bad,,,\n"  %(softBinNum, softBinMap[UpperCaseSuiteName],hardBinNumberMap[hardBinMap[UpperCaseSuiteName]],hardBinMap[UpperCaseSuiteName])
-	elif(hardBinMap.has_key(UpperCaseSuiteName)):
-		self_defined_softbin= UpperCaseSuiteName.replace("_ST","_F")
-		log_tmp= "Suite:%s  SoftBin:%s\n" %(suite_namelist_93k[index],self_defined_softbin)
-		log.append(log_tmp)
-		bin_info = "%s,%s,%s,%s,bad,,,\n" %(softBinNum, self_defined_softbin,hardBinNumberMap[hardBinMap[UpperCaseSuiteName]],hardBinMap[UpperCaseSuiteName])
+			fill_in_limit(testname_93k[index],suite_namelist_vlct[index])
+			limit = "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s," %(temp30lower, temp30upper,temp37lower, temp37upper,temp90lower,temp90upper,temp105lower, temp105upper,tempN45lower, tempN45upper, lower_compare_state, higher_compare_state,unit)
+	 	else:
+			print "not support this running mode : ", running_mode
+			break
+		
+		UpperCaseSuiteName = suite_namelist_vlct[index].upper()
+		if(softBinMap.has_key(UpperCaseSuiteName)):
+			bin_info = "%s,%s,%s,%s,bad,,,\n"  %(softBinNum, softBinMap[UpperCaseSuiteName],hardBinNumberMap[hardBinMap[UpperCaseSuiteName]],hardBinMap[UpperCaseSuiteName])
+		elif(hardBinMap.has_key(UpperCaseSuiteName)):
+			self_defined_softbin= UpperCaseSuiteName.replace("_ST","_F")
+			log_tmp= "Suite:%s  SoftBin:%s\n" %(suite_namelist_93k[index],self_defined_softbin)
+			log.append(log_tmp)
+			bin_info = "%s,%s,%s,%s,bad,,,\n" %(softBinNum, self_defined_softbin,hardBinNumberMap[hardBinMap[UpperCaseSuiteName]],hardBinMap[UpperCaseSuiteName])
+		else:
+			print "Warnings: %s did not find bin info in vlct program!" %UpperCaseSuiteName
+			bin_info = ",,,,bad,,,\n"
+			comment = "Warning here, no bin info "
+		results.append(name93k+limit+bin_info)
 	else:
-		print "Warnings: %s did not find bin info in vlct program!" %UpperCaseSuiteName
-		bin_info = ",,,,bad,,,\n"
-		comment = "Warning here, no bin info "
-	results.append(name93k+limit+bin_info)
+		comment = "Doesn't support functional mode here"
+		tmp_testname_List = get_Testware_Parm_Name(suite_namelist_93k[index])
+		#print testname_List
+		for testname in tmp_testname_List:
+			name93k = "%s,%s,%s," %(suite_namelist_93k[index],testname, testnumber)
+			fill_in_limit(testname,suite_namelist_vlct[index])
+			limit = "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s," %(temp30lower, temp30upper,temp37lower, temp37upper,temp90lower,temp90upper,temp105lower, temp105upper,tempN45lower, tempN45upper, lower_compare_state, higher_compare_state,unit)
+			
+			UpperCaseSuiteName = suite_namelist_vlct[index].upper()
+			if(softBinMap.has_key(UpperCaseSuiteName)):
+				bin_info = "%s,%s,%s,%s,bad,,,\n"  %(softBinNum, softBinMap[UpperCaseSuiteName],hardBinNumberMap[hardBinMap[UpperCaseSuiteName]],hardBinMap[UpperCaseSuiteName])
+			elif(hardBinMap.has_key(UpperCaseSuiteName)):
+				self_defined_softbin= UpperCaseSuiteName.replace("_ST","_F")
+				log_tmp= "Suite:%s  SoftBin:%s\n" %(suite_namelist_93k[index],self_defined_softbin)
+				log.append(log_tmp)
+				bin_info = "%s,%s,%s,%s,bad,,,\n" %(softBinNum, self_defined_softbin,hardBinNumberMap[hardBinMap[UpperCaseSuiteName]],hardBinMap[UpperCaseSuiteName])
+			else:
+				print "Warnings: %s did not find bin info in vlct program!" %UpperCaseSuiteName
+				bin_info = ",,,,bad,,,\n"
+				comment = "Warning here, no bin info "
+			results.append(name93k+limit+bin_info)
+							
 	softBinNum=softBinNum+1
 	testnumber=testnumber+1
-
 out_f = file(output_file,"w")
 out_f.writelines(results)
 log_f = file(log_file,"w")
