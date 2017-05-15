@@ -6,48 +6,60 @@
 import sys,getopt
 import re
 from itertools import islice  
-from test.test_tarfile import LimitsTest
-from _elementtree import Comment
-from operator import index
 
 
 ver=0.6
 debug_falg=0
-softBinNum = 14
-testnumber = 1000
+softBinNum = 900
+testnumber = 11000
 increase = 1
-linux = False
+linux = True
 TITestType="POSTBI_OS"
+TIDeviceType="F791790_AAN_MS"
+tempList=["TEMP_30_DEG","TEMP_37_DEG","TEMP_90_DEG","TEMP_105_DEG","TEMP_N45_DEG"]
 
 
 lower = "-1"
 upper = "1"
-lower_compare_state = "NA"
-higher_compare_state = "NA"
-unit=""
 suite_namelist_93k=[]
 suite_namelist_vlct=[]
 testname_93k=[]
-temp30lower = ""
-temp30upper = ""
-temp37lower = ""
-temp37upper = ""
-temp90lower = ""
-temp90upper = ""
-temp105lower = ""
-temp105upper = ""
-tempN45lower = ""
-tempN45upper = ""
+# temp30lower = ""
+# upper_map["TEMP_30_DEG"] = ""
+# lower_map["TEMP_37_DEG"] = ""
+# upper_map["TEMP_37_DEG"] = ""
+# lower_map["TEMP_90_DEG"] = ""
+# upper_map["TEMP_90_DEG"] = ""
+# lower_map["TEMP_105_DEG"] = ""
+# upper_map["TEMP_105_DEG"] = ""
+# lower_map["TEMP_N45_DEG"] = ""
+# upper_map["TEMP_N45_DEG"] = ""
+# temp30_lower_compare_state = ""
+# temp30_upper_compare_state = ""
+# temp37_lower_compare_state = ""
+# temp37_upper_compare_state = ""
+# temp90_lower_compare_state = ""
+# temp90_upper_compare_state = ""
+# temp105_lower_compare_state = ""
+# temp105_upper_compare_state = ""
+# tempN45_lower_compare_state = ""
+# tempN45_upper_compare_state = ""
 lower_compare_state = ""
-higher_compare_state = ""
+upper_compare_state = ""
 unit = ""
 
 vlct_testname=[]
 vlct_limitinfo=[]
 existList_tmp=[]
 softBinMap={}
+softBinNumberMap={}
 hardBinMap={}
 hardBinNumberMap={}
+
+lower_map={}
+upper_map={}
+lower_compare_state_map={}
+upper_compare_state_map={}
 
 def init():
 	softBinMap.clear
@@ -185,125 +197,221 @@ def read_limitcsv(x):
 #     		print line,
     		Key = line.replace("\"","").replace("\n","").split(',')
     		comment = "checkTITestType"
-    		if(Key[8] == ""):    		
+		if(len(Key[7])>0):
+			deviceTypeContent = Key[7].split(';')
+			for name in deviceTypeContent:
+				if(name == TIDeviceType):
+					if(Key[8] == ""):    		
+						vlct_testname.append(Key[0])
+						vlct_limitinfo.append(line)
+    					else:
+    						TestTypeContent = Key[8].split(";")
+    		 				for TestType in TestTypeContent:
+    		 	 				if(TestType == TITestType):
+    			   					vlct_testname.append(Key[0])
+    								vlct_limitinfo.append(line)
+		else:				#empty		
+	    		if(Key[8] == ""):    		
 				vlct_testname.append(Key[0])
 				vlct_limitinfo.append(line)
-    		else:
-    			TestTypeContent = Key[8].split(";")
-    		 	for TestType in TestTypeContent:
-    		 	 	if(TestType == TITestType):
-    			   		vlct_testname.append(Key[0])
-    					vlct_limitinfo.append(line)
+    			else:
+    				TestTypeContent = Key[8].split(";")
+    		 		for TestType in TestTypeContent:
+    		 	 		if(TestType == TITestType):
+    			   			vlct_testname.append(Key[0])
+    						vlct_limitinfo.append(line)
   	x.close()
 	print "limit table ",x," has been read"
 
 def fill_in_limit(testname_93k,input_name):
 	comment = "fill in limit function"
-	global temp30lower, temp30upper,temp37lower, temp37upper,temp90lower,temp90upper,temp105lower, temp105upper,tempN45lower, tempN45upper, unit
+	global upper_map, lower_map, upper_compare_state_map, lower_compare_state_map
+	global unit
+	##### empty TITestType
 	for index in range(len(vlct_testname)):		
-		if(vlct_testname[index] == input_name):
+		if(vlct_testname[index].upper() == input_name.upper()):
 			content = vlct_limitinfo[index].replace("\"","").replace("\n","").split(',')
 			if (testname_93k == content[2]):
-				if(content[8]==""):
+				if(content[8]=="" and content[7]==""):
 					if(content[9]==""):
-						temp30lower = content[3]
-						temp30upper = content[4]
-						temp37lower = content[3]
-						temp37upper = content[4]
-						temp90lower = content[3]
-						temp90upper = content[4]
-						temp105lower = content[3]
-						temp105upper = content[4]
-						tempN45lower = content[3]
-						tempN45upper = content[4]
-						compare_state_define(content[6])
+						for temp in tempList:
+							lower_map[temp] = content[3]
+							upper_map[temp] = content[4]
+
+						compare_state_define(content[6],"All")
+
 						unit = content[5]
 						
-	#print temp30lower, temp30upper,temp37lower, temp37upper,temp90lower,temp90upper,temp105lower, temp105upper,tempN45lower, tempN45upper, lower_compare_state, higher_compare_state,unit
+	
 	for index in range(len(vlct_testname)):		
-		if(vlct_testname[index] == input_name):
+		if(vlct_testname[index].upper() == input_name.upper()):
 			content = vlct_limitinfo[index].replace("\"","").replace("\n","").split(',')
 			if (testname_93k == content[2]):
-				if(content[8]==""):
+				if(content[8]=="" and content[7]==""):
 					if(len(content[9])>0):
 						temptype = content[9].split(";")
 						for temp in temptype:
 							specify_limit_by_temp(temp,content[3],content[4])
-							compare_state_define(content[6])
+							compare_state_define(content[6],temp)
 							unit = content[5]
-	#print temp30lower, temp30upper,temp37lower, temp37upper,temp90lower,temp90upper,temp105lower, temp105upper,tempN45lower, tempN45upper, lower_compare_state, higher_compare_state,unit
+	
 	for index in range(len(vlct_testname)):		
-		if(vlct_testname[index] == input_name):
+		if(vlct_testname[index].upper() == input_name.upper()):
 			content = vlct_limitinfo[index].replace("\"","").replace("\n","").split(',')
 			if (testname_93k == content[2]):
-				if(len(content[8])>0): # means  current TITestType existing
+				if(len(content[8])>0 and content[7]==""): # means  current TITestType existing
 					if(content[9]==""):
-						temp30lower = content[3]
-						temp30upper = content[4]
-						temp37lower = content[3]
-						temp37upper = content[4]
-						temp90lower = content[3]
-						temp90upper = content[4]
-						temp105lower = content[3]
-						temp105upper = content[4]
-						tempN45lower = content[3]
-						tempN45upper = content[4]
-						compare_state_define(content[6])
+						for temp in tempList:
+							lower_map[temp] = content[3]
+							upper_map[temp] = content[4]
+
+						compare_state_define(content[6],"All")
 						unit = content[5]
-	#print temp30lower, temp30upper,temp37lower, temp37upper,temp90lower,temp90upper,temp105lower, temp105upper,tempN45lower, tempN45upper, lower_compare_state, higher_compare_state,unit				
+					
 	for index in range(len(vlct_testname)):		
-		if(vlct_testname[index] == input_name):
+		if(vlct_testname[index].upper() == input_name.upper()):
 			content = vlct_limitinfo[index].replace("\"","").replace("\n","").split(',')
 			if (testname_93k == content[2]):
-				if(len(content[8])>0): # means  current TITestType existing
+				if(len(content[8])>0 and content[7]==""): # means  current TITestType existing
 					if(len(content[9])>0):
 						temptype = content[9].split(";")
 						for temp in temptype:
 							specify_limit_by_temp(temp,content[3],content[4])
-							compare_state_define(content[6])
+							compare_state_define(content[6],temp)
+							unit = content[5] 
+							
+	##### match TITestType
+	
+	for index in range(len(vlct_testname)):		
+		if(vlct_testname[index].upper() == input_name.upper()):
+			content = vlct_limitinfo[index].replace("\"","").replace("\n","").split(',')
+			if (testname_93k == content[2]):
+				if(content[8]=="" and len(content[7])>0):
+					if(content[9]==""):
+						for temp in tempList:
+							lower_map[temp] = content[3]
+							upper_map[temp] = content[4]
+
+						compare_state_define(content[6],"All")
+						unit = content[5]
+						
+	
+	for index in range(len(vlct_testname)):		
+		if(vlct_testname[index].upper() == input_name.upper()):
+			content = vlct_limitinfo[index].replace("\"","").replace("\n","").split(',')
+			if (testname_93k == content[2]):
+				if(content[8]=="" and len(content[7])>0):
+					if(len(content[9])>0):
+						temptype = content[9].split(";")
+						for temp in temptype:
+							specify_limit_by_temp(temp,content[3],content[4])
+							compare_state_define(content[6],temp)
+							unit = content[5]
+	
+	for index in range(len(vlct_testname)):		
+		if(vlct_testname[index].upper() == input_name.upper()):
+			content = vlct_limitinfo[index].replace("\"","").replace("\n","").split(',')
+			if (testname_93k == content[2]):
+				if(len(content[8])>0 and len(content[7])>0): # means  current TITestType existing
+					if(content[9]==""):
+						for temp in tempList:
+							lower_map[temp] = content[3]
+							upper_map[temp] = content[4]
+
+						compare_state_define(content[6],"All")
+						unit = content[5]
+					
+	for index in range(len(vlct_testname)):		
+		if(vlct_testname[index].upper() == input_name.upper()):
+			content = vlct_limitinfo[index].replace("\"","").replace("\n","").split(',')
+			if (testname_93k == content[2]):
+				if(len(content[8])>0 and len(content[7])>0): # means  current TITestType existing
+					if(len(content[9])>0):
+						temptype = content[9].split(";")
+						for temp in temptype:
+							specify_limit_by_temp(temp,content[3],content[4])
+							compare_state_define(content[6],temp)
 							unit = content[5] 
 							
 	
 
-def compare_state_define(x):
-	global lower_compare_state, higher_compare_state
+def compare_state_define(x,temp):
+	global lower_compare_state_map, upper_compare_state_map
 	if(x == "O"):
 		print "compare state O need define by user self"
-	elif(x =="B"):	
-		lower_compare_state = "GE"
-		higher_compare_state = "LE"
+	elif(x =="B"):
+		if(temp == "All"):
+			for index in tempList:
+				lower_compare_state_map[index] = "GE"
+				upper_compare_state_map[index] = "LE"
+		else:
+			lower_compare_state_map[temp] = "GE"
+			upper_compare_state_map[temp] = "LE"
+		# lower_compare_state = "GE"
+		# upper_compare_state = "LE"
+
 	elif(x=="N"):
-		lower_compare_state = "NA"
-		higher_compare_state = "NA"
+		if (temp == "All"):
+			for index in tempList:
+				lower_compare_state_map[index] = "NA"
+				upper_compare_state_map[index] = "NA"
+		else:
+			lower_compare_state_map[temp] = "NA"
+			upper_compare_state_map[temp] = "NA"
+		# lower_compare_state = "NA"
+		# upper_compare_state = "NA"
 	elif(x=="L"):
-		lower_compare_state = "GE"
-		higher_compare_state = "NA"
+		if (temp == "All"):
+			for index in tempList:
+				lower_compare_state_map[index] = "GE"
+				upper_compare_state_map[index] = "NA"
+		else:
+			lower_compare_state_map[temp] = "GE"
+			upper_compare_state_map[temp] = "NA"
+		# lower_compare_state = "GE"
+		# upper_compare_state = "NA"
 	elif(x=="U"):
-		lower_compare_state = "NA"
-		higher_compare_state = "LE"
+		if (temp == "All"):
+			for index in tempList:
+				lower_compare_state_map[index] = "NA"
+				upper_compare_state_map[index] = "LE"
+		else:
+			lower_compare_state_map[temp] = "NA"
+			upper_compare_state_map[temp] = "LE"
+
+		# lower_compare_state = "NA"
+		# upper_compare_state = "LE"
 	elif(x==""):
-		lower_compare_state = "GE"
-		higher_compare_state = "LE"
+		if (temp == "All"):
+			for index in tempList:
+				lower_compare_state_map[index] = "GE"
+				upper_compare_state_map[index] = "LE"
+		else:
+			lower_compare_state_map[temp] = "GE"
+			upper_compare_state_map[temp] = "LE"
+
+		# lower_compare_state = "GE"
+		# upper_compare_state = "LE"
 	else:
 		print "The system doesn't support this compare type: " , x
 		
 def specify_limit_by_temp(temp,lower,upper):
-	global temp30lower, temp30upper,temp37lower, temp37upper,temp90lower,temp90upper,temp105lower, temp105upper,tempN45lower, tempN45upper
+	global lower_map,upper_map
 	if(temp == "TEMP_30_DEG"):
-		temp30lower = lower
-		temp30upper = upper
+		lower_map[temp] = lower
+		upper_map[temp] = upper
 	elif(temp == "TEMP_37_DEG"):
-		temp37lower = lower
-		temp37upper = upper
+		lower_map[temp] = lower
+		upper_map[temp] = upper
 	elif(temp == "TEMP_90_DEG"):
-		temp90lower = lower
-		temp90upper = upper
+		lower_map[temp] = lower
+		upper_map[temp] = upper
 	elif(temp == "TEMP_105_DEG"):
-		temp105lower = lower
-		temp105upper = upper
+		lower_map[temp] = lower
+		upper_map[temp] = upper
 	elif(temp == "TEMP_N45_DEG"):
-		tempN45lower = lower
-		tempN45upper = upper
+		lower_map[temp] = lower
+		upper_map[temp] = upper
 	else:
 		print "The system doesn't support this temperature type: " , temp	
 		
@@ -311,7 +419,7 @@ def get_Testware_Parm_Name(input_name):
 	existList_tmp=[]
 	result_tmp = "nonexist"
 	for index in range(len(vlct_testname)):		
-		if(vlct_testname[index] == input_name):
+		if(vlct_testname[index].upper() == input_name.upper()):
 			content = vlct_limitinfo[index].replace("\"","").replace("\n","").split(',')
 			for name in existList_tmp:
 				if(name == content[2]):
@@ -387,7 +495,7 @@ IDDQLimitSheet = file(prgm_path+"IDDQ/iddqLimits.csv","r")
 DIGITALLimitSheet = file(prgm_path+"DIGITAL/digitalLimits.csv","r")
 ODPLimitSheet = file(prgm_path+"ODP/odpLimits.csv","r")
 UTILITIESLimitSheet = file(prgm_path+"UTILITIES/diagLimits.csv","r")
-
+CRESLimitSheet = file(prgm_path+"CONTY/contyCresLimits.csv","r")
 
 
 
@@ -410,6 +518,7 @@ read_limitcsv(ANALOGLimitSheet)
 read_limitcsv(AVSLimitSheet)
 read_limitcsv(AVSPATTERNLimitSheet)
 read_limitcsv(CONTYLimitSheet)
+read_limitcsv(CRESLimitSheet)
 
 
 if(debug_falg):
@@ -419,23 +528,39 @@ if(debug_falg):
 
 results = []
 log =[]
-testtable_headline = "Suite name,Test name,Test number,Lsl,Usl,Lsl,Usl,Lsl,Usl,Lsl,Usl,Lsl,Usl,Lsl_typ,Usl_typ,Units,Bin_s_num,Bin_s_name,Bin_h_num,Bin_h_name,Bin_type,Bin_reprobe,Bin_overon,Test_remarks\n"
-testtable_secondline = "Test mode,,,TEMP_30_DEG,TEMP_30_DEG,TEMP_37_DEG,TEMP_37_DEG,TEMP_90_DEG,TEMP_90_DEG,TEMP_105_DEG,TEMP_105_DEG,TEMP_N45_DEG,TEMP_N45_DEG,,,,,,,,,,,\n"
+testtable_headline = "Suite name,Test name,Pins,Test number,"
+for temp in tempList:
+	tmp = "Lsl,Usl,Lsl_typ,Usl_typ,"
+	testtable_headline = testtable_headline+tmp
+tmp = "Units,Bin_s_num,Bin_s_name,Bin_h_num,Bin_h_name,Bin_type,Bin_reprobe,Bin_overon,Test_remarks\n"
+testtable_headline = testtable_headline+tmp
+
+
+testtable_secondline = "Test mode,,,,"
+for temp in tempList:
+	tmp = "%s,%s,%s,%s," %(temp, temp, temp, temp)
+	testtable_secondline = testtable_secondline+tmp
+tmp = ",,,,,,,,,,\n"
+testtable_secondline = testtable_secondline+tmp
+
 results.append(testtable_headline)
 results.append(testtable_secondline)
 log_headline = " These suites did not find softBin name from vlct program, self-defined by tool:"
 log.append(log_headline)
 
 for index in range(len(suite_namelist_93k)):
+
+	Increase_softbin= True
+
 	if(testname_93k[index]!=""):
-		name93k = "%s,%s,%s," %(suite_namelist_93k[index],testname_93k[index], testnumber)
+		name93k = "%s,%s,,%s," %(suite_namelist_93k[index],testname_93k[index], testnumber)
 		if(running_mode == "func"):
 			limit = "1,1,1,1,1,1,1,1,1,1,GE,LE,Bool,"
 		elif(running_mode == "para"):
 			comment = "93K parametric test"
 	
 			fill_in_limit(testname_93k[index],suite_namelist_vlct[index])
-			limit = "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s," %(temp30lower, temp30upper,temp37lower, temp37upper,temp90lower,temp90upper,temp105lower, temp105upper,tempN45lower, tempN45upper, lower_compare_state, higher_compare_state,unit)
+			limit = "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s," %(lower_map["TEMP_30_DEG"], upper_map["TEMP_30_DEG"],lower_map["TEMP_37_DEG"], upper_map["TEMP_37_DEG"],lower_map["TEMP_90_DEG"],upper_map["TEMP_90_DEG"],lower_map["TEMP_105_DEG"], upper_map["TEMP_105_DEG"],lower_map["TEMP_N45_DEG"], upper_map["TEMP_N45_DEG"], lower_compare_state, upper_compare_state,unit)
 	 	else:
 			print "not support this running mode : ", running_mode
 			break
@@ -453,31 +578,85 @@ for index in range(len(suite_namelist_93k)):
 			bin_info = ",,,,bad,,,\n"
 			comment = "Warning here, no bin info "
 		results.append(name93k+limit+bin_info)
+		testnumber=testnumber+1
 	else:
 		comment = "Doesn't support functional mode here"
-		tmp_testname_List = get_Testware_Parm_Name(suite_namelist_93k[index])
-		#print testname_List
+		
+		#print testnumber
+		if(testnumber%100 != 0):
+			testnumber=(testnumber//100+1) *100 
+		else:
+			testnumber=testnumber 
+
+		#print testnumber
+		
+		golden_tml_dummy_func = "functional"
+
+		golden_tml_line="%s,%s,,%s," %(suite_namelist_93k[index],golden_tml_dummy_func, testnumber)
+		for temp in tempList:
+			tmp_limit = "%s,%s,%s,%s," % ("", "", "NA", "NA")
+			golden_tml_line = golden_tml_line + tmp_limit
+		tmp_limit = ",,,,,,,,,\n"
+		golden_tml_line = golden_tml_line + tmp_limit
+
+		results.append(golden_tml_line)
+		testnumber=testnumber+1 
+		#print testnumber	
+			
+		tmp_testname_List = get_Testware_Parm_Name(suite_namelist_vlct[index])			
+		#print tmp_testname_List
+		
 		for testname in tmp_testname_List:
-			name93k = "%s,%s,%s," %(suite_namelist_93k[index],testname, testnumber)
+			name93k = "%s,%s,,%s," %(suite_namelist_93k[index],testname, testnumber)
 			fill_in_limit(testname,suite_namelist_vlct[index])
-			limit = "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s," %(temp30lower, temp30upper,temp37lower, temp37upper,temp90lower,temp90upper,temp105lower, temp105upper,tempN45lower, tempN45upper, lower_compare_state, higher_compare_state,unit)
+			limit = ""
+			for temp in tempList:
+				tmp_limit = "%s,%s,%s,%s," %(lower_map[temp], upper_map[temp],lower_compare_state_map[temp],upper_compare_state_map[temp])
+				limit = limit+ tmp_limit
+			tmp_limit = "%s," %unit
+			limit = limit +tmp_limit
 			
 			UpperCaseSuiteName = suite_namelist_vlct[index].upper()
 			if(softBinMap.has_key(UpperCaseSuiteName)):
-				bin_info = "%s,%s,%s,%s,bad,,,\n"  %(softBinNum, softBinMap[UpperCaseSuiteName],hardBinNumberMap[hardBinMap[UpperCaseSuiteName]],hardBinMap[UpperCaseSuiteName])
+				if(softBinNumberMap.has_key(softBinMap[UpperCaseSuiteName])):
+					bin_info = "%s,%s,%s,%s,bad,,,\n" % (
+					softBinNumberMap[softBinMap[UpperCaseSuiteName]], softBinMap[UpperCaseSuiteName], hardBinNumberMap[hardBinMap[UpperCaseSuiteName]],
+					hardBinMap[UpperCaseSuiteName])
+					Increase_softbin=False
+				else:
+					softBinNum = softBinNum + 1
+					bin_info = "%s,%s,%s,%s,bad,,,\n"  %(softBinNum, softBinMap[UpperCaseSuiteName],hardBinNumberMap[hardBinMap[UpperCaseSuiteName]],hardBinMap[UpperCaseSuiteName])
+					softBinNumberMap[softBinMap[UpperCaseSuiteName]]=softBinNum
+					Increase_softbin = True
+
+
 			elif(hardBinMap.has_key(UpperCaseSuiteName)):
 				self_defined_softbin= UpperCaseSuiteName.replace("_ST","_F")
 				log_tmp= "Suite:%s  SoftBin:%s\n" %(suite_namelist_93k[index],self_defined_softbin)
 				log.append(log_tmp)
-				bin_info = "%s,%s,%s,%s,bad,,,\n" %(softBinNum, self_defined_softbin,hardBinNumberMap[hardBinMap[UpperCaseSuiteName]],hardBinMap[UpperCaseSuiteName])
+				if(softBinNumberMap.has_key(self_defined_softbin)):
+					bin_info = "%s,%s,%s,%s,bad,,,\n" % (
+					softBinNumberMap[self_defined_softbin], self_defined_softbin,
+					hardBinNumberMap[hardBinMap[UpperCaseSuiteName]],
+					hardBinMap[UpperCaseSuiteName])
+					Increase_softbin = False
+				else:
+					softBinNum = softBinNum + 1
+					bin_info = "%s,%s,%s,%s,bad,,,\n" %(softBinNum, self_defined_softbin,hardBinNumberMap[hardBinMap[UpperCaseSuiteName]],hardBinMap[UpperCaseSuiteName])
+					softBinNumberMap[self_defined_softbin] = softBinNum
+					Increase_softbin = True
+
 			else:
 				print "Warnings: %s did not find bin info in vlct program!" %UpperCaseSuiteName
 				bin_info = ",,,,bad,,,\n"
 				comment = "Warning here, no bin info "
 			results.append(name93k+limit+bin_info)
-							
-	softBinNum=softBinNum+1
-	testnumber=testnumber+1
+			testnumber=testnumber+1
+		results.append(",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,\n") #dummy line
+
+	# if(Increase_softbin):
+	# 	softBinNum=softBinNum+1
+
 out_f = file(output_file,"w")
 out_f.writelines(results)
 log_f = file(log_file,"w")
